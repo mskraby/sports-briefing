@@ -9,10 +9,27 @@ if not api_key or not email_pwd:
     print('Missing secrets')
     exit(1)
 
+print('Fetching sports news...')
+
+# Call Claude with web search to get current news
 r = requests.post('https://api.anthropic.com/v1/messages',
     headers={'x-api-key': api_key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'},
-   json={'model': 'claude-opus-5', 'max_tokens': 4000, 'messages': [{'role': 'user', 'content': 'Top 3 news: Padres, MLB, NFL, 49ers. Plain text, headers. Padres add 2-3 angles.'}]})
+    json={
+        'model': 'claude-opus-5',
+        'max_tokens': 4000,
+        'tools': [
+            {
+                'type': 'web_search',
+                'name': 'web_search'
+            }
+        ],
+        'messages': [{
+            'role': 'user',
+            'content': 'Search the web for today\'s top 3 news stories for each: San Diego Padres, MLB, NFL, and San Francisco 49ers. Use the web search tool to find current news. Compile into a briefing with plain text and section headers. For Padres, include 2-3 new analysis angles or talking points.'
+        }]
+    })
 
+print(f'Status: {r.status_code}')
 data = r.json()
 
 if 'error' in data:
@@ -26,13 +43,10 @@ for block in data.get('content', []):
         break
 
 if not briefing:
-    print(f'DEBUG: Full response = {json.dumps(data, indent=2)}')
-    print(f'DEBUG: Content length = {len(data.get("content", []))}')
-    for i, block in enumerate(data.get('content', [])):
-        print(f'DEBUG: Block {i} type = {block.get("type")}')
-    print('ERROR: No text found')
+    print('No text found in response')
     exit(1)
 
+print('Sending emails...')
 msg = MIMEMultipart()
 msg['From'] = 'skraby.matt@gmail.com'
 msg['To'] = 'skraby.matt@gmail.com, matt.skraby@audacy.com'
@@ -43,4 +57,4 @@ with smtplib.SMTP_SSL('smtp.gmail.com', 465) as s:
     s.login('skraby.matt@gmail.com', email_pwd)
     s.sendmail('skraby.matt@gmail.com', ['skraby.matt@gmail.com', 'matt.skraby@audacy.com'], msg.as_string())
 
-print('Done')
+print('Success - briefing sent')
