@@ -17,12 +17,11 @@ r = requests.post('https://api.anthropic.com/v1/messages',
     json={
         'model': 'claude-opus-5',
         'max_tokens': 4000,
-        'tools': [
-            {
-                'type': 'web_search',
-                'name': 'web_search'
-            }
-        ],
+           'tools': [
+       {
+           'type': 'web_search_20260318'
+       }
+   ],
         'messages': [{
             'role': 'user',
             'content': 'Search the web for today\'s top 3 news stories for each: San Diego Padres, MLB, NFL, and San Francisco 49ers. Use the web search tool to find current news. Compile into a briefing with plain text and section headers. For Padres, include 2-3 new analysis angles or talking points.'
