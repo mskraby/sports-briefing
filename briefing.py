@@ -25,9 +25,13 @@ for block in data.get('content', []):
         briefing = block.get('text')
         break
 
-if not briefing:
-    print('No text found')
-    exit(1)
+   if not briefing:
+       print(f'DEBUG: Full response = {json.dumps(data, indent=2)}')
+       print(f'DEBUG: Content length = {len(data.get("content", []))}')
+       for i, block in enumerate(data.get('content', [])):
+           print(f'DEBUG: Block {i} type = {block.get("type")}')
+       print('ERROR: No text found')
+       exit(1)
 
 msg = MIMEMultipart()
 msg['From'] = 'skraby.matt@gmail.com'
