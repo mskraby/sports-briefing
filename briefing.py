@@ -11,7 +11,7 @@ if not api_key or not email_pwd:
 
 r = requests.post('https://api.anthropic.com/v1/messages',
     headers={'x-api-key': api_key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'},
-    json={'model': 'claude-opus-5', 'max_tokens': 1200, 'messages': [{'role': 'user', 'content': 'Top 3 news: Padres, MLB, NFL, 49ers. Plain text, headers. Padres add 2-3 angles.'}]})
+   json={'model': 'claude-opus-5', 'max_tokens': 4000, 'messages': [{'role': 'user', 'content': 'Top 3 news: Padres, MLB, NFL, 49ers. Plain text, headers. Padres add 2-3 angles.'}]})
 
 data = r.json()
 
