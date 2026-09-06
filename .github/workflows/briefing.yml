@@ -15,7 +15,7 @@ jobs:
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
         run: |
           python3 << 'ENDSCRIPT'
-          import requests, smtplib, os
+          import requests, smtplib, os, json
           from email.mime.text import MIMEText
           from email.mime.multipart import MIMEMultipart
 
@@ -23,25 +23,36 @@ jobs:
           email_pwd = os.getenv('EMAIL_PASSWORD')
 
           if not api_key or not email_pwd:
-              print('Missing secrets')
+              print('ERROR: Missing secrets')
               exit(1)
 
+          print('Calling Claude API...')
           r = requests.post('https://api.anthropic.com/v1/messages',
               headers={'x-api-key': api_key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'},
               json={'model': 'claude-opus-5', 'max_tokens': 1200, 'messages': [{'role': 'user', 'content': 'Top 3 news each: Padres, MLB, NFL, 49ers. Plain text, section headers. Padres: add 2-3 analysis angles.'}]})
 
+          print(f'Status: {r.status_code}')
           data = r.json()
-          briefing = None
+          
+          if 'error' in data:
+              print(f'API Error: {json.dumps(data, indent=2)}')
+              exit(1)
 
-          for block in data.get('content', []):
+          print(f'Response keys: {data.keys()}')
+          print(f'Content blocks: {len(data.get("content", []))}')
+          
+          briefing = None
+          for i, block in enumerate(data.get('content', [])):
+              print(f'Block {i}: type={block.get("type")}')
               if block.get('type') == 'text':
                   briefing = block.get('text')
                   break
 
           if not briefing:
-              print('No text in response')
+              print(f'ERROR: No text found. Full response: {json.dumps(data, indent=2)}')
               exit(1)
 
+          print('Sending emails...')
           msg = MIMEMultipart()
           msg['From'] = 'skraby.matt@gmail.com'
           msg['To'] = 'skraby.matt@gmail.com, matt.skraby@audacy.com'
@@ -50,7 +61,4 @@ jobs:
 
           with smtplib.SMTP_SSL('smtp.gmail.com', 465) as s:
               s.login('skraby.matt@gmail.com', email_pwd)
-              s.sendmail('skraby.matt@gmail.com', ['skraby.matt@gmail.com', 'matt.skraby@audacy.com'], msg.as_string())
-
-          print('Briefing sent')
-          ENDSCRIPT
+              s.sendmail('skraby.matt@gmail.com',
