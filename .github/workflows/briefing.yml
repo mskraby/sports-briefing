@@ -1,65 +1,56 @@
 name: Daily Sports Briefing
+
 on:
   schedule:
     - cron: '0 15 * * *'
   workflow_dispatch:
+
 jobs:
   send-briefing:
     runs-on: ubuntu-latest
     steps:
-      - run: python3 << 'ENDSCRIPT'
+      - name: Send briefing
         env:
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-        shell: bash
-      - run: |
-    python3 << 'ENDSCRIPT'
-    import requests, smtplib, os, json
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
+        run: |
+          python3 << 'ENDSCRIPT'
+          import requests, smtplib, os
+          from email.mime.text import MIMEText
+          from email.mime.multipart import MIMEMultipart
 
-    api_key = os.getenv('CLAUDE_API_KEY')
-    email_pwd = os.getenv('EMAIL_PASSWORD')
+          api_key = os.getenv('CLAUDE_API_KEY')
+          email_pwd = os.getenv('EMAIL_PASSWORD')
 
-    if not api_key or not email_pwd:
-        print('Missing secrets')
-        exit(1)
+          if not api_key or not email_pwd:
+              print('Missing secrets')
+              exit(1)
 
-    r = requests.post('https://api.anthropic.com/v1/messages',
-        headers={'x-api-key': api_key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'},
-        json={'model': 'claude-opus', 'max_tokens': 1200, 'messages': [{'role': 'user', 'content': 'Top 3 news each: Padres, MLB, NFL, 49ers. Plain text, section headers. Padres: add 2-3 additional details.'}]})
+          r = requests.post('https://api.anthropic.com/v1/messages',
+              headers={'x-api-key': api_key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'},
+              json={'model': 'claude-opus-5', 'max_tokens': 1200, 'messages': [{'role': 'user', 'content': 'Top 3 news each: Padres, MLB, NFL, 49ers. Plain text, section headers. Padres: add 2-3 analysis angles.'}]})
 
-    if r.status_code != 200:
-        print(f'API error: {r.status_code}')
-        print(r.text)
-        exit(1)
+          data = r.json()
+          briefing = None
 
-    data = r.json()
-    briefing = None
+          for block in data.get('content', []):
+              if block.get('type') == 'text':
+                  briefing = block.get('text')
+                  break
 
-    for block in data.get('content', []):
-        if block.get('type') == 'text':
-            briefing = block.get('text')
-            break
+          if not briefing:
+              print('No text in response')
+              exit(1)
 
-    if not briefing:
-        print('No text in response')
-        print(f'Response: {json.dumps(data)}')
-        exit(1)
+          msg = MIMEMultipart()
+          msg['From'] = 'skraby.matt@gmail.com'
+          msg['To'] = 'skraby.matt@gmail.com, matt.skraby@audacy.com'
+          msg['Subject'] = 'Sports briefing'
+          msg.attach(MIMEText(briefing, 'plain'))
 
-    msg = MIMEMultipart()
-    msg['From'] = 'skraby.matt@gmail.com'
-    msg['To'] = 'skraby.matt@gmail.com, matt.skraby@audacy.com'
-    msg['Subject'] = 'Sports briefing'
-    msg.attach(MIMEText(briefing, 'plain'))
+          with smtplib.SMTP_SSL('smtp.gmail.com', 465) as s:
+              s.login('skraby.matt@gmail.com', email_pwd)
+              s.sendmail('skraby.matt@gmail.com', ['skraby.matt@gmail.com', 'matt.skraby@audacy.com'], msg.as_string())
 
-    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as s:
-        s.login('skraby.matt@gmail.com', email_pwd)
-        s.sendmail('skraby.matt@gmail.com', ['skraby.matt@gmail.com', 'matt.skraby@audacy.com'], msg.as_string())
-
-    print('Briefing sent')
-    ENDSCRIPT
-  env:
-    CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
-    EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-  shell: bash
+          print('Briefing sent')
+          ENDSCRIPT
